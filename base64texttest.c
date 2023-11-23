@@ -149,15 +149,15 @@ double base64_test(char *text)
 		memset(out, 0, sizeof(out));
 
 		struct timeval stop, start;
-    	gettimeofday(&start, NULL);
+    		gettimeofday(&start, NULL); //замер времени
 
 		buf_len = base64_encode(text, buf, strlen(text), 1);
 
 		buf_len = base64_decode(buf, out, strlen(buf));
 
-       	gettimeofday(&stop, NULL);
-    	double delta = ((stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec) / 1000000.0;
-	    sum_time += delta;
+       		gettimeofday(&stop, NULL); //замер времени
+    		double delta = ((stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec) / 1000000.0;
+	  	sum_time += delta;
 
 		//printf("%s\n", out);
 
