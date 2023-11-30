@@ -145,10 +145,8 @@ size_t base64_decode(const BYTE in[], BYTE out[], size_t len) //декодер
 
 void base64_test(char *text)
 {
-
-	
-	BYTE buf[1000000];
-	BYTE out[1000000];
+	char *out = malloc(sizeof(text));
+	char *buf = malloc(sizeof(text));
 	size_t buf_len;
 	int iterations = 1000;
 	double sum_time_encode = 0;
@@ -156,8 +154,8 @@ void base64_test(char *text)
 
 
 	for (int i = 0; i < iterations; i++) {
-		memset(buf, 0, sizeof(buf)); //очитска памяти переменных от мусора
-		memset(out, 0, sizeof(out));
+		memset(buf, 0, sizeof(*buf)); //очитска памяти переменных от мусора
+		memset(out, 0, sizeof(*out));
 
 		struct timeval stop, start;
     	gettimeofday(&start, NULL);
@@ -176,8 +174,8 @@ void base64_test(char *text)
 		delta_times_decode[i] = delta_decode;
 		//printf("%s\n", out);
 
-		memset(buf, 0, sizeof(buf));
-		memset(out, 0, sizeof(out));
+		memset(buf, 0, sizeof(*buf));
+		memset(out, 0, sizeof(*out));
 	}
 	avr_time_decode = sum_time_decode / iterations;
 	avr_time_encode = sum_time_encode / iterations;
@@ -188,8 +186,8 @@ void base64_test(char *text)
 		sigma_decode += (delta_times_decode[i] - avr_time_decode) * (delta_times_decode[i] - avr_time_decode);
 		sigma_encode += (delta_times_encode[i] - avr_time_encode) * (delta_times_encode[i] - avr_time_encode);
 	}
-	sigma_decode = sqrt(sigma_decode) / iterations;
-	sigma_encode = sqrt(sigma_encode) / iterations;
+	sigma_decode = sqrt(sigma_decode / (iterations - 1 ));
+	sigma_encode = sqrt(sigma_encode / (iterations - 1 ));
 }
 
 int main()
@@ -204,7 +202,7 @@ int main()
 
 
     for(int j = 1; j < limit; ++j){
-        char *text = malloc(size_samples_array * j * sizeof(char) + 10 * sizeof(char));
+        char *text = malloc(size_samples_array * j * sizeof(char) + 2 * sizeof(char));
         for(int i = 0; i < size_samples_array * j; i+=10){
             text[i] = (char)('A' + rand() % 26);
             text[i + 1] = (char)('a' + rand() % 26);
