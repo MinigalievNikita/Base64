@@ -6,12 +6,13 @@
 #include <sys/time.h>
 
 
+
 #define STRINGLENGHT 76
 
 static const BYTE charset[] = {"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"}; //алфавит
 static const int key = 200; //8 битный ключ
 
-int flag = 100; //количество изменяемых символов по ошибке
+int flag = 10 ; //количество изменяемых символов по ошибке
 
 BYTE revchar(char ch) //нормируем чтобы были числа от 0 до 63
 {
@@ -74,7 +75,6 @@ size_t base64_encode(const BYTE in[], BYTE out[], size_t len, int newline_flag) 
 				string_size++;
 			}
 		}
-
 		if (left_over == 1) {
 			out[idx2]     = charset[in[idx] >> 2];
 			out[idx2 + 1] = charset[(in[idx] & 0x03) << 4];
@@ -162,7 +162,7 @@ void base64_test(char *text)
 	size_t buf_len;
     memset(buf, 0, sizeof(buf)); //очитска памяти переменных от мусора
     memset(out, 0, sizeof(out));
-
+    //printf("%s\n", text);
     buf_len = base64_encode(text, buf, strlen(text), 1);
 
     //printf("%s\n", buf);
@@ -182,22 +182,26 @@ void base64_test(char *text)
 
 int main(int argc, char*argv[])
 {
-    flag = atoi(argv[1]);
+    //flag = atoi(argv[1]);
     //char text[1000] = {"The most famous part of the Taj Mahal is the large white dome in the centre. It is 35 metres high and is surrounded by four smaller domes. The rooms inside the building are decorated with beautiful archways and precious stones in the walls. The buildings are surrounded by gardens with pathways, pools, fountains and green gardens"};
-    char *text = malloc(size_samples_array * sizeof(char) + 2 * sizeof(char));
-        for(int i = 0; i < size_samples_array; i+=10){
-            text[i] = (char)('A' + rand() % 26);
-            text[i + 1] = (char)('a' + rand() % 26);
-            text[i + 2] = (char)('0' + rand() % 10);
-            text[i + 3] = (char)('A' + rand() % 26);
-            text[i + 4] = (char)('a' + rand() % 26);
-            text[i + 5] = (char)('A' + rand() % 26);
-            text[i + 6] = (char)('0' + rand() % 10);
-            text[i + 7] = (char)('0' + rand() % 10);
-            text[i + 8] = (char)('a' + rand() % 26);
-            text[i + 9] = (char)('A' + rand() % 26);
-        }
-    base64_test(text);
-    printf("errors %d", errors_sum);
+    for(int i = 0; i < 11; ++i){
+        flag = 10 + 50*i;
+        errors_sum = 0;
+        char *text = malloc(size_samples_array * sizeof(char) + 10 * sizeof(char));
+            for(int i = 0; i < size_samples_array; i+=10){
+                text[i] = (char)('A' + rand() % 26);
+                text[i + 1] = (char)('a' + rand() % 26);
+                text[i + 2] = (char)('0' + rand() % 10);
+                text[i + 3] = (char)('A' + rand() % 26);
+                text[i + 4] = (char)('a' + rand() % 26);
+                text[i + 5] = (char)('A' + rand() % 26);
+                text[i + 6] = (char)('0' + rand() % 10);
+                text[i + 7] = (char)('0' + rand() % 10);
+                text[i + 8] = (char)('a' + rand() % 26);
+                text[i + 9] = (char)('A' + rand() % 26);
+            }
+        base64_test(text);
+    printf("errors %d bad bits %d \n", errors_sum, 10 + 50*i);
+    }
 	return 0;
 }
