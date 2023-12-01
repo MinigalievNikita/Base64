@@ -140,9 +140,8 @@ void base64_test()
 	BYTE text[3][1024] = {{"foobar"},
 						  {"The most famous part of the Taj Mahal is the large white dome in the centre. It is 35 metres high and is surrounded by four smaller domes. The rooms inside the building are decorated with beautiful archways and precious stones in the walls. The buildings are surrounded by gardens with pathways, pools, fountains and green gardens"},
 	                      {"Man is distinguished, not only by his reason, but by this singular passion from other animals, which is a lust of the mind, that by a perseverance of delight in the continued and indefatigable generation of knowledge, exceeds the short vehemence of any carnal pleasure"}};
-	
-	BYTE buf[1000];
-	BYTE out[1000];
+	BYTE out[1024];
+	BYTE buf[1024];
 	size_t buf_len;
 	for (int i = 0; i < 3; i++) {
 		memset(buf, 0, sizeof(buf)); //очитска памяти переменных от мусора
@@ -159,7 +158,6 @@ void base64_test()
 		memset(buf, 0, sizeof(buf));
 		memset(out, 0, sizeof(out));
 	}
-	
 }
 
 int main()
