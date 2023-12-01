@@ -4,16 +4,20 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
-#include <time.h>
-
+#include <math.h>
 
 
 #define STRINGLENGHT 76
 
 static const BYTE charset[] = {"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"}; //алфавит
-static const int key = 200; //8 битный ключ
+double avr_time_decode;
+double avr_time_encode;
+double delta_times_encode[20000];
+double delta_times_decode[20000];
+double sigma_encode;
+double sigma_decode;
 
-int flag = 10 ; //количество изменяемых символов по ошибке
+int key;
 
 BYTE revchar(char ch) //нормируем чтобы были числа от 0 до 63
 {
@@ -30,12 +34,11 @@ BYTE revchar(char ch) //нормируем чтобы были числа от 0
 
 	return(ch);
 }
-			
 
 size_t base64_encode(const BYTE in[], BYTE out[], size_t len, int newline_flag) //кодировщик
 {
 	size_t idx, idx2, blks, blk_ceiling, left_over, string_size = 0;
-	
+
 	blks = (len / 3);
 	left_over = len % 3; //нужно для определения добавления символов
 
@@ -49,8 +52,6 @@ size_t base64_encode(const BYTE in[], BYTE out[], size_t len, int newline_flag) 
 	else {
 		blk_ceiling = blks * 3;
 		for (idx = 0, idx2 = 0; idx < blk_ceiling; idx += 3, idx2 += 4) {
-            srand(time(NULL));
-            int randfactor = rand() % 4;
 			out[idx2]     = charset[in[idx] >> 2];
 			out[idx2 + 1] = charset[((in[idx] & 0x03) << 4) | (in[idx + 1] >> 4)];
 			out[idx2 + 2] = charset[((in[idx + 1] & 0x0f) << 2) | (in[idx + 2] >> 6)];
@@ -63,18 +64,9 @@ size_t base64_encode(const BYTE in[], BYTE out[], size_t len, int newline_flag) 
 
 			if (((idx2 - string_size + 4) % STRINGLENGHT == 0) && newline_flag) {
 				out[idx2 + 4] = '\n'; //по стандарту перевод записи на новую строку с каждого 76 символа
-				out[idx2 + 4] = out[idx2 + 4] ^ key;
 				idx2++;
 				string_size++;
 			}
-            if(flag > 0){//изменение байта
-                if(out[idx2 + randfactor] % 2 == 0){
-                    out[idx2 + randfactor] += 1;
-                } else {
-                    out[idx2 + randfactor] -= 1;
-                }
-                flag--;
-            }
 		}
 
 		if (left_over == 1) {
@@ -84,8 +76,6 @@ size_t base64_encode(const BYTE in[], BYTE out[], size_t len, int newline_flag) 
 			out[idx2 + 3] = '=';
             out[idx2]  = out[idx2] ^ key;
 			out[idx2 + 1] = out[idx2 + 1] ^ key;
-			out[idx2 + 2] = out[idx2 + 2] ^ key;
-			out[idx2 + 3] = out[idx2 + 3] ^ key;
 			idx2 += 4;
 		}
 		else if (left_over == 2) {
@@ -96,7 +86,6 @@ size_t base64_encode(const BYTE in[], BYTE out[], size_t len, int newline_flag) 
             out[idx2]  = out[idx2] ^ key;
 			out[idx2 + 1] = out[idx2 + 1] ^ key;
 			out[idx2 + 2] = out[idx2 + 2] ^ key;
-			out[idx2 + 3] = out[idx2 + 3] ^ key;
 			idx2 += 4;
 		}
 	}
@@ -106,19 +95,19 @@ size_t base64_encode(const BYTE in[], BYTE out[], size_t len, int newline_flag) 
 
 size_t base64_decode(const BYTE in[], BYTE out[], size_t len) //декодер
 {
-BYTE ch;
+	BYTE ch;
 	size_t idx, idx2, blks, blk_ceiling, left_over;
 
-	if ((in[len - 1] ^ key) == '=')
+	if (in[len - 1] == '=')
 		len--;
-	if ((in[len - 1] ^ key) == '=')
+	if (in[len - 1] == '=')
 		len--;
 
 	blks = len / 4;
 	left_over = len % 4;
 
 	if (out == NULL) {
-		if (len >= 77 && ((in[STRINGLENGHT]  ^ key) == '\n'))
+		if (len >= 77 && (in[STRINGLENGHT] == '\n'))
 			len -= len / (STRINGLENGHT + 1);
 		blks = len / 4;
 		left_over = len % 4;
@@ -132,7 +121,7 @@ BYTE ch;
 	else {
 		blk_ceiling = blks * 4;
 		for (idx = 0, idx2 = 0; idx2 < blk_ceiling; idx += 3, idx2 += 4) {
-			if ((in[idx2] ^ key) == '\n')
+			if (in[idx2] == '\n')
 				idx2++;
 
 			out[idx]     = (revchar((in[idx2]^ key)) << 2) | ((revchar((in[idx2 + 1]^ key)) & 0x30) >> 4);
@@ -154,56 +143,50 @@ BYTE ch;
 	return(idx);
 }
 
-
-int errors_sum = 0;
-int size_samples_array = 2000;
-
 void base64_test(char *text)
 {
-
-	
-	BYTE buf[3000];
-	BYTE out[3000];
 	size_t buf_len;
-    memset(buf, 0, sizeof(buf)); //очитска памяти переменных от мусора
-    memset(out, 0, sizeof(out));
-    //printf("%s\n", text);
-    buf_len = base64_encode(text, buf, strlen(text), 1);
+	int iterations = 1000;
+	double sum_time_encode = 0;
+	double sum_time_decode = 0;
 
-    //printf("%s\n", buf);
-    
-    buf_len = base64_decode(buf, out, strlen(buf));
 
-    //printf("%s\n", out);
-    for(int i = 0; i < size_samples_array; ++i){
-        if(text[i] == out[i])
-            continue;
-        errors_sum++;
-    }
-    memset(buf, 0, sizeof(buf));
-    memset(out, 0, sizeof(out));
+	for (int i = 0; i < iterations; i++) {
+		BYTE out[20000];
+		BYTE buf[20000];
+        
+        memset(buf, 0, sizeof(buf));
+		memset(out, 0, sizeof(out));
+		buf_len = base64_encode(text, buf, strlen(text), 1);
+		//printf("%s\n", buf);
+
+		buf_len = base64_decode(buf, out, strlen(buf));
+		//printf("%s\n", out);
+        memset(buf, 0, sizeof(buf));
+		memset(out, 0, sizeof(out));
+	}
 
 }
 
 int main(int argc, char*argv[])
 {
-    printf("bad bits %d ", flag);
-    errors_sum = 0;
-    char *text = malloc(size_samples_array * sizeof(char) + 10 * sizeof(char));
-            for(int i = 0; i < size_samples_array; i+=10){
-                text[i] = (char)('A' + rand() % 26);
-                text[i + 1] = (char)('a' + rand() % 26);
-                text[i + 2] = (char)('0' + rand() % 10);
-                text[i + 3] = (char)('A' + rand() % 26);
-                text[i + 4] = (char)('a' + rand() % 26);
-                text[i + 5] = (char)('A' + rand() % 26);
-                text[i + 6] = (char)('0' + rand() % 10);
-                text[i + 7] = (char)('0' + rand() % 10);
-                text[i + 8] = (char)('a' + rand() % 26);
-                text[i + 9] = (char)('A' + rand() % 26);
-            }
-        base64_test(text);
-    printf("errors %d \n", errors_sum);
+	int key = rand() % 256; //8 битный ключ
+	int size_samples_array = atoi(argv[1]);
+    char *text = malloc(size_samples_array * sizeof(char) + 2 * sizeof(char));
+        for(int i = 0; i < size_samples_array; i+=10){
+            text[i] = (char)('A' + rand() % 26);
+            text[i + 1] = (char)('a' + rand() % 26);
+            text[i + 2] = (char)('0' + rand() % 10);
+            text[i + 3] = (char)('A' + rand() % 26);
+            text[i + 4] = (char)('a' + rand() % 26);
+            text[i + 5] = (char)('A' + rand() % 26);
+            text[i + 6] = (char)('0' + rand() % 10);
+            text[i + 7] = (char)('0' + rand() % 10);
+            text[i + 8] = (char)('a' + rand() % 26);
+            text[i + 9] = (char)('A' + rand() % 26);
+        }
+    base64_test(text);
+	free(text);
+    printf("Success");
 	return 0;
 }
-

@@ -56,6 +56,7 @@ size_t base64_encode(const BYTE in[], BYTE out[], size_t len, int newline_flag) 
 
 			if (((idx2 - string_size + 4) % STRINGLENGHT == 0) && newline_flag) {
 				out[idx2 + 4] = '\n'; //по стандарту перевод записи на новую строку с каждого 76 символа
+				out[idx2 + 4] = out[idx2 + 4] ^ key;
 				idx2++;
 				string_size++;
 			}
@@ -68,6 +69,8 @@ size_t base64_encode(const BYTE in[], BYTE out[], size_t len, int newline_flag) 
 			out[idx2 + 3] = '=';
             out[idx2]  = out[idx2] ^ key;
 			out[idx2 + 1] = out[idx2 + 1] ^ key;
+			out[idx2 + 2] = out[idx2 + 2] ^ key;
+			out[idx2 + 3] = out[idx2 + 3] ^ key;
 			idx2 += 4;
 		}
 		else if (left_over == 2) {
@@ -78,6 +81,7 @@ size_t base64_encode(const BYTE in[], BYTE out[], size_t len, int newline_flag) 
             out[idx2]  = out[idx2] ^ key;
 			out[idx2 + 1] = out[idx2 + 1] ^ key;
 			out[idx2 + 2] = out[idx2 + 2] ^ key;
+			out[idx2 + 3] = out[idx2 + 3] ^ key;
 			idx2 += 4;
 		}
 	}
@@ -90,16 +94,16 @@ size_t base64_decode(const BYTE in[], BYTE out[], size_t len) //декодер
 	BYTE ch;
 	size_t idx, idx2, blks, blk_ceiling, left_over;
 
-	if (in[len - 1] == '=')
+	if ((in[len - 1] ^ key) == '=')
 		len--;
-	if (in[len - 1] == '=')
+	if ((in[len - 1] ^ key) == '=')
 		len--;
 
 	blks = len / 4;
 	left_over = len % 4;
 
 	if (out == NULL) {
-		if (len >= 77 && (in[STRINGLENGHT] == '\n'))
+		if (len >= 77 && ((in[STRINGLENGHT]  ^ key) == '\n'))
 			len -= len / (STRINGLENGHT + 1);
 		blks = len / 4;
 		left_over = len % 4;
@@ -113,7 +117,7 @@ size_t base64_decode(const BYTE in[], BYTE out[], size_t len) //декодер
 	else {
 		blk_ceiling = blks * 4;
 		for (idx = 0, idx2 = 0; idx2 < blk_ceiling; idx += 3, idx2 += 4) {
-			if (in[idx2] == '\n')
+			if ((in[idx2] ^ key) == '\n')
 				idx2++;
 
 			out[idx]     = (revchar((in[idx2]^ key)) << 2) | ((revchar((in[idx2 + 1]^ key)) & 0x30) >> 4);
